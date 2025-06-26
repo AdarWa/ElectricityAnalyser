@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit config.yaml</title>
+    <style>
+        body {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        #editor {
+            width: 100vw;
+            height: 80vh;
+        }
+        .toolbar {
+            padding: 1em;
+            background: #222;
+            display: flex;
+            justify-content: flex-end;
+        }
+        button {
+            background: #007acc;
+            color: #fff;
+            border: none;
+            padding: 0.6em 1.2em;
+            border-radius: 4px;
+            font-size: 1em;
+            cursor: pointer;
+        }
+        button:disabled {
+            background: #444;
+            cursor: not-allowed;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js"></script>
+</head>
+<body>
+    <div class="toolbar">
+        <button onclick="window.history.back();" style="margin-right: 1em;">&#8592;</button>
+        <h2 style="margin: 0; flex: 1; text-align: left;">Edit config.yaml</h2>
+        <button id="saveBtn">Save</button>
+    </div>
+    <div id="editor"></div>
+    <form id="saveForm" method="POST" style="display:none;">
+        <input type="hidden" name="config_content" id="configContent">
+    </form>
+    <script>
+        let editor;
+        require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs' }});
+        require(['vs/editor/editor.main'], function () {
+            editor = monaco.editor.create(document.getElementById('editor'), {
+                value: `{% autoescape off %}{{ config_content}}{% endautoescape %}`,
+                language: 'yaml',
+                theme: 'vs-dark',
+                automaticLayout: true,
+                fontSize: 16,
+                minimap: { enabled: false }
+            });
+        });
+
+        document.getElementById('saveBtn').onclick = function() {
+            const content = editor.getValue();
+            document.getElementById('configContent').value = content;
+            document.getElementById('saveForm').submit();
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <title>Electricity Analysis Results</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Bootstrap 5 CSS (Dark) -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-datepicker@1.10.0/dist/css/bootstrap-datepicker3.min.css">
+      <script src="https://cdn.jsdelivr.net/npm/bootstrap-datepicker@1.10.0/dist/js/bootstrap-datepicker.min.js"></script>
+</head>
+<body class="bg-dark text-light">
+<div class="container py-5">
+  <h1 class="mb-4">Electricity Usage Analysis</h1>
+  <div class="d-flex justify-content-end mb-3">
+    <div class="bg-dark rounded px-4 py-2 text-end">
+      <span class="text-muted">IEC Price:</span>
+      <span class="fs-5 fw-bold">{{ iec_price }}</span>
+      <span class="fs-6">&#8362;/kWh</span>
+    </div>
+  </div>
+  <div class="card bg-secondary mb-4">
+    <div class="card-header d-flex align-items-center">
+      <label for="planSelect" class="me-2 mb-0">Select Plan:</label>
+      <div class="dropdown me-2">
+        <button class="btn btn-outline-dark dropdown-toggle" type="button" id="planDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+          Choose Plans
+        </button>
+        <ul class="dropdown-menu" aria-labelledby="planDropdown" style="max-height: 300px; overflow-y: auto;">
+          {% for plan in plans %}
+            <li>
+              <label class="dropdown-item">
+                <input type="checkbox" class="form-check-input me-2 plan-checkbox" value="{{ plan.name }}"
+                  {% if plan.name in request.args.getlist('plan') %}checked{% endif %}>
+                {{ plan.name }}
+              </label>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+      <script>
+        $(function() {
+          $('.plan-checkbox').on('change', function() {
+            const selected = [];
+            $('.plan-checkbox:checked').each(function() {
+              selected.push($(this).val());
+            });
+            const url = new URL(window.location.href);
+            url.searchParams.delete('plan');
+            selected.forEach(plan => url.searchParams.append('plan', plan));
+            window.location.href = url.toString();
+          });
+        });
+      </script>
+      <div id="planPriceInfo" class="ms-4">
+        {% set plan_list = request.args.getlist('plan')%}
+        {% if request.args.getlist('plan') | length > 0 %}
+          {% for plan in plan_list%}
+          <span class="ms-3">
+            Price with <i>{{ plan }}</i>:
+            <strong> {{ plan_prices[plan] }}</strong>&#8362;
+          </span>
+          {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+    <div class="card-body">
+      <canvas id="costChart" height="100"></canvas>
+    </div>
+  </div>
+  <div class="card bg-secondary mb-4">
+    <div class="card-header d-flex align-items-center">
+      <label for="period_start" class="me-2 mb-0">Select Period:</label>
+      <input type="text" id="periodStart" class="form-control me-2 w-auto" name="period_start" value="{{ request.args.get('period_start', '') }}" autocomplete="off" placeholder="DD-MM-YYYY">
+      <span class="mx-2">to</span>
+      <input type="text" id="periodEnd" class="form-control me-2 w-auto" name="period_end" value="{{ request.args.get('period_end', '') }}" autocomplete="off" placeholder="DD-MM-YYYY">
+      <button id="periodFilterBtn" class="btn btn-primary ms-2" type="button">Apply</button>
+      <script>
+        {% if not request.args.get('period_start') %}
+          $('#periodStart').val("{{ minPeriod.strftime('%d-%m-%Y') }}");
+        {% endif %}
+        {% if not request.args.get('period_end') %}
+          $('#periodEnd').val("{{ maxPeriod.strftime('%d-%m-%Y') }}");
+        {% endif %}
+        $('#periodFilterBtn').on('click', function() {
+          const start = $('#periodStart').val();
+          const end = $('#periodEnd').val();
+          const url = new URL(window.location.href);
+          if (start) {
+            url.searchParams.set('period_start', start);
+          } else {
+            url.searchParams.delete('period_start');
+          }
+          if (end) {
+            url.searchParams.set('period_end', end);
+          } else {
+            url.searchParams.delete('period_end');
+          }
+          window.location.href = url.toString();
+        });
+      </script>
+    </div>
+    <div class="card-body">
+      <canvas id="kwhPeriodChart" height="100"></canvas>
+    </div>
+  </div>
+    <div class="card bg-secondary mb-4">
+    <div class="card-header d-flex align-items-center">
+      <label for="singleDay" class="me-2 mb-0">Select Day:</label>
+      <button id="prevDayBtn" class="btn btn-outline-light btn-sm me-2" type="button">&lt;</button>
+      <input type="text" id="singleDay" class="form-control me-2 w-auto" name="single_day" value="{{ request.args.get('single_day', '') }}" autocomplete="off" placeholder="DD-MM-YYYY">
+      <button id="nextDayBtn" class="btn btn-outline-light btn-sm me-2" type="button">&gt;</button>
+      <script>
+
+      </script>
+    </div>
+    <div class="card-body">
+      <canvas id="kwhRawChart" height="100"></canvas>
+    </div>
+  </div>
+</div>
+<script>
+  $(function() {
+
+      $('#periodStart').datepicker({
+        format: 'dd-mm-yyyy',
+        autoclose: true,
+        todayHighlight: true
+      });
+      $('#periodEnd').datepicker({
+        format: 'dd-mm-yyyy',
+        autoclose: true,
+        todayHighlight: true
+      });
+      $('#singleDay').datepicker({
+        format: 'dd-mm-yyyy',
+        autoclose: true,
+        todayHighlight: true
+      });
+      const minDate = "{{ minPeriod.strftime('%d-%m-%Y') }}";
+      const maxDate = "{{ maxPeriod.strftime('%d-%m-%Y') }}";
+      $('#periodStart').datepicker('setStartDate', minDate);
+      $('#periodStart').datepicker('setEndDate', maxDate);
+      $('#periodEnd').datepicker('setStartDate', minDate);
+      $('#periodEnd').datepicker('setEndDate', maxDate);
+      $('#singleDay').datepicker('setStartDate', minDate);
+      $('#singleDay').datepicker('setEndDate', maxDate);
+      const qsStart = "{{ request.args.get('period_start', '') }}";
+      const qsEnd = "{{ request.args.get('period_end', '') }}";
+      if (qsStart) {
+        $('#periodStart').datepicker('setDate', qsStart);
+      }
+      if (qsEnd) {
+        $('#periodEnd').datepicker('setDate', qsEnd);
+      }
+      if ("{{ request.args.get('single_day', '') }}") {
+        $('#singleDay').datepicker('setDate', "{{ request.args.get('single_day', '') }}");
+      } else {
+        $('#singleDay').datepicker('setDate', "{{ minPeriod.strftime('%d-%m-%Y') }}");
+      }
+
+    const labels_period = [
+      {% for time in resultsPeriod.keys() %}
+        "{{ time.strftime('%H:%M') }}",
+      {% endfor %}
+    ];
+    const data_period = [
+      {% for kwh in resultsPeriod.values() %}
+        {{ kwh }},
+      {% endfor %}
+    ];
+    const labels_single = [
+      {% for time in resultsSingle.keys() %}
+        "{{ time.strftime('%H:%M') }}",
+      {% endfor %}
+    ];
+    const data_single = [
+      {% for kwh in resultsSingle.values() %}
+        {{ kwh }},
+      {% endfor %}
+    ];
+    const ctxPeriod = document.getElementById('kwhPeriodChart').getContext('2d');
+    new Chart(ctxPeriod, {
+      type: 'line',
+      data: {
+        labels: labels_period,
+        datasets: [{
+          label: 'kWh',
+          data: data_period,
+          fill: true,
+          borderColor: 'rgba(0, 123, 255, 1)',
+          backgroundColor: 'rgba(0, 123, 255, 0.2)',
+          tension: 0.3,
+          pointBackgroundColor: 'rgba(0, 123, 255, 1)',
+          pointRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { labels: { color: '#fff' } },
+          title: {
+            display: true,
+            text: 'Electricity Usage (kWh) Over Period',
+            color: '#fff'
+          }
+        },
+        scales: {
+          x: { ticks: { color: '#fff' }, grid: { color: '#444' } },
+          y: { ticks: { color: '#fff' }, grid: { color: '#444' } }
+        }
+      }
+    });
+    const ctxSingle = document.getElementById('kwhRawChart').getContext('2d');
+    new Chart(ctxSingle, {
+      type: 'line',
+      data: {
+        labels: labels_single,
+        datasets: [{
+          label: 'kWh',
+          data: data_single,
+          fill: true,
+          borderColor: 'rgba(0, 123, 255, 1)',
+          backgroundColor: 'rgba(0, 123, 255, 0.2)',
+          tension: 0.3,
+          pointBackgroundColor: 'rgba(0, 123, 255, 1)',
+          pointRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { labels: { color: '#fff' } },
+          title: {
+            display: true,
+            text: 'Electricity Usage (kWh) Over Single Day',
+            color: '#fff'
+          }
+        },
+        scales: {
+          x: { ticks: { color: '#fff' }, grid: { color: '#444' } },
+          y: { ticks: { color: '#fff' }, grid: { color: '#444' } }
+        }
+      }
+    });
+
+    const stringToColour = (str) => {
+      let hash = 0;
+      str.split('').forEach(char => {
+        hash = char.charCodeAt(0) + ((hash << 5) - hash)
+      })
+      let colour = '#'
+      for (let i = 0; i < 3; i++) {
+        const value = (hash >> (i * 8)) & 0xff
+        colour += value.toString(16).padStart(2, '0')
+      }
+      return colour
+    }
+
+    const costChartLabels = [
+      {% if plan_results|length > 0%}
+      {% for time in (plan_results.values()|first).keys() %}
+        "{{ time.strftime('%H:%M') }}",
+      {% endfor %}
+      {%endif%}
+    ];
+
+    const costChartDatasets = [
+      {% for name,costs in plan_results.items() %}
+        {
+          label: "{{ name }}",
+          data: [
+            {% for cost in costs.values() %}
+              {{ cost }},
+            {% endfor %}
+          ],
+          fill: true,
+          borderColor: "{{plansColors[name]["color"]["light"]}}",
+          backgroundColor: "{{plansColors[name]["color"]["dark"]}}",
+          tension: 0.3,
+          pointBackgroundColor: "{{plansColors[name]["color"]["light"]}}",
+
+          pointRadius: 4
+        },
+      {% endfor %}
+    ];
+
+    const ctxCost = document.getElementById('costChart').getContext('2d');
+    new Chart(ctxCost, {
+      type: 'line',
+      data: {
+        labels: costChartLabels,
+        datasets: costChartDatasets
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { labels: { color: '#fff' } },
+          title: {
+            display: true,
+            text: 'Cost (₪) Over Time by Plan',
+            color: '#fff'
+          }
+        },
+        scales: {
+          x: { ticks: { color: '#fff' }, grid: { color: '#444' } },
+          y: { 
+            ticks: { color: '#fff' }, 
+            grid: { color: '#444' },
+            title: { display: true, text: 'Cost (₪)', color: '#fff' }
+          }
+        }
+      }
+    });
+
+        function adjustDay(offset) {
+            const current = $('#singleDay').datepicker('getDate');
+            if (!current) return;
+            const newDate = new Date(current);
+            newDate.setDate(newDate.getDate() + offset);
+            $('#singleDay').datepicker('setDate', newDate);
+            applyDay();
+        }
+        function applyDay() {
+          const day = $('#singleDay').val();
+          const url = new URL(window.location.href);
+          if (day) {
+            url.searchParams.set('single_day', day);
+          } else {
+            url.searchParams.delete('single_day');
+          }
+          window.location.href = url.toString();
+        }
+        $('#prevDayBtn').on('click', function() { adjustDay(-1); });
+        $('#nextDayBtn').on('click', function() { adjustDay(1); });
+        $('#singleDay').on('change', applyDay);
+              $('#planSelect').on('change', function() {
+        const plan = $(this).val();
+        const url = new URL(window.location.href);
+        if (plan) {
+          url.searchParams.set('plan', plan);
+        } else {
+          url.searchParams.delete('plan');
+        }
+        window.location.href = url.toString();
+      });
+  });
+
+</script>
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
