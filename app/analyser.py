@@ -9,7 +9,7 @@ def open_csv(path):
     f = open(path, 'r', encoding='utf-8')
     lines = f.readlines()
     f.close()
-    first_line = 0
+    first_line = -1
     for i, line in enumerate(lines):
         if pattern.match(line):
             first_line = i

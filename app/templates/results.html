@@ -196,7 +196,8 @@
           backgroundColor: 'rgba(0, 123, 255, 0.2)',
           tension: 0.3,
           pointBackgroundColor: 'rgba(0, 123, 255, 1)',
-          pointRadius: 4
+          borderWidth: {{config["graph"]["line_width"]}},
+          pointRadius: {{config["graph"]["point_radius"]}}
         }]
       },
       options: {
@@ -228,7 +229,8 @@
           backgroundColor: 'rgba(0, 123, 255, 0.2)',
           tension: 0.3,
           pointBackgroundColor: 'rgba(0, 123, 255, 1)',
-          pointRadius: 4
+          borderWidth: {{config["graph"]["line_width"]}},
+          pointRadius: {{config["graph"]["point_radius"]}}
         }]
       },
       options: {
@@ -283,8 +285,8 @@
           backgroundColor: "{{plansColors[name]["color"]["dark"]}}",
           tension: 0.3,
           pointBackgroundColor: "{{plansColors[name]["color"]["light"]}}",
-
-          pointRadius: 4
+          borderWidth: {{config["graph"]["line_width"]}},
+          pointRadius: {{config["graph"]["point_radius"]}}
         },
       {% endfor %}
     ];
@@ -348,6 +350,13 @@
         }
         window.location.href = url.toString();
       });
+      if (localStorage.getItem("my_app_name_here-quote-scroll") != null) {
+        $(window).scrollTop(localStorage.getItem("my_app_name_here-quote-scroll"));
+    }
+
+    $(window).on("scroll", function() {
+        localStorage.setItem("my_app_name_here-quote-scroll", $(window).scrollTop());
+    });
   });
 
 </script>

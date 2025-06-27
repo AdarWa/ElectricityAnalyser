@@ -6,7 +6,7 @@ def load_yaml_config(path: str):
 config = None
 def init():
     global config
-    config = load_yaml_config('config.yaml')
+    config = load_yaml_config('/config/config.yaml')
 
 def getConfig():
     global config

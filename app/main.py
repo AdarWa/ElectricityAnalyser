@@ -7,7 +7,7 @@ from werkzeug.utils import secure_filename
 import config
 
 app = Flask(__name__)
-UPLOAD_FOLDER = 'uploads'
+UPLOAD_FOLDER = '/config/uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 @app.route('/', methods=['GET', 'POST'])
@@ -36,9 +36,9 @@ def results(filename):
         start_date = pd.to_datetime(request.args.get('period_start', minPeriod.strftime('%d-%m-%Y')), format='%d-%m-%Y').date()
         end_date = pd.to_datetime(request.args.get('period_end', maxPeriod.strftime('%d-%m-%Y')), format='%d-%m-%Y').date()
         df_ = df[(df['datetime'].dt.date >= start_date) & (df['datetime'].dt.date <= end_date)].copy()
-        grouped_data_period = analyser.group_by_time(df_).to_dict()
+        grouped_data_period = analyser.group_by_time(df_)
     else:
-        grouped_data_period = analyser.group_by_time(df).to_dict()
+        grouped_data_period = analyser.group_by_time(df)
     single_day = request.args.get('single_day', minPeriod.strftime('%d-%m-%Y'))
     try:
         single_date = pd.to_datetime(single_day, format='%d-%m-%Y').date()
@@ -54,16 +54,15 @@ def results(filename):
     if request.args.getlist('plan'):
         for plan_name in request.args.getlist('plan'):
             try:
-                grouped_data_plan = analyser.group_by_time(df)
-                df_plan = analyser.apply_plan(grouped_data_plan.copy(), plan_name)
+                df_plan = analyser.apply_plan(grouped_data_period.copy(), plan_name)
                 df_plan *= price
                 plan_prices[plan_name] = round(df_plan.sum(),config.config["rounding_digits"])
                 plan_results[plan_name] = df_plan.to_dict()
                 plan_colors[plan_name] = next((p for p in config.getConfig()['plans'] if p['name'] == plan_name), None)
             except ValueError as e:
                 return str(e), 400
-        
-    return render_template('results.html', resultsPeriod=grouped_data_period, minPeriod=minPeriod, maxPeriod=maxPeriod, filename=filename, resultsSingle=grouped_data_single, plans=config.getConfig()['plans'], price_without_plan=5, plan_prices=plan_prices, iec_price=config.getConfig()["iec_price"], plan_results=plan_results, plansColors=plan_colors)
+    grouped_data_period = grouped_data_period.to_dict()
+    return render_template('results.html', resultsPeriod=grouped_data_period, minPeriod=minPeriod, maxPeriod=maxPeriod, filename=filename, resultsSingle=grouped_data_single, plans=config.getConfig()['plans'], price_without_plan=5, plan_prices=plan_prices, iec_price=config.getConfig()["iec_price"], plan_results=plan_results, plansColors=plan_colors,config=config.config)
 
 @app.route('/config', methods=['GET', 'POST'])
 def config_():
@@ -77,5 +76,15 @@ def config_():
         config_content = f.read()
     return render_template('config.html', config_content=config_content)
 
+@app.route("/delete/<filename>", methods=["POST"])
+def delete_cb(filename):
+    filename = secure_filename(filename)
+    path = os.path.join(UPLOAD_FOLDER, filename)
+    if os.path.exists(path):
+        os.remove(path)
+    else:
+        return f"No file named {filename} found.", 400
+    return redirect(url_for('index'))
+
 if __name__ == '__main__':
-    app.run("0.0.0.0", port=5000, debug=True)
+    app.run("0.0.0.0", port=5000)

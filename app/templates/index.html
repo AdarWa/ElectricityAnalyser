@@ -34,6 +34,9 @@
             {% for filename in files %}
               <li class="list-group-item bg-secondary">
                 <a href="/results/{{ filename }}" class="link-light">{{ filename }}</a>
+                <form action="/delete/{{ filename }}" method="post" class="d-inline ms-2">
+                  <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete {{ filename }}?')">Delete</button>
+                </form>
               </li>
             {% endfor %}
           </ul>

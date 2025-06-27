@@ -1,7 +1,10 @@
 iec_price: 0.6402 # shekels per kWh
 rounding_digits: 2
+graph:
+  point_radius: 4
+  line_width: 3
 plans:
-  - name: None
+  - name: Base
     discount: 0
     hours: []
     color:
@@ -9,7 +12,7 @@ plans:
       dark: "rgba(174, 223, 247, 0.2)"
   - name: Night
     discount: 0.2
-    hours: [0, 1, 2, 3, 4, 5, 6, 23]
+    hours: [0,1,2,3,4,5,6,23]
     color:
       light: "rgba(182, 247, 174, 1)"    # #B6F7AE
       dark: "rgba(182, 247, 174, 0.2)"
