@@ -4,9 +4,12 @@ import os
 import analyser
 import pandas as pd
 from werkzeug.utils import secure_filename
+import jinja2
 import config
 
 app = Flask(__name__)
+app.jinja_env.cache_size = 0 # Disable Jinja2 template caching
+# app.config['TEMPLATES_AUTO_RELOAD'] = True
 UPLOAD_FOLDER = '/config/uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -28,6 +31,11 @@ def index():
 def results(filename):
     filename = secure_filename(filename)
     path = os.path.join(UPLOAD_FOLDER, filename)
+    if not os.path.exists(path):
+        return "File not found", 404
+    if not filename.endswith('.csv'):
+        return "Invalid file type. Please upload a CSV file.", 400
+    config.init()
     df = analyser.open_csv(path)
     grouped_data_period = None
     minPeriod = df['datetime'].min()

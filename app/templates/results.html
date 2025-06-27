@@ -350,12 +350,13 @@
         }
         window.location.href = url.toString();
       });
-      if (localStorage.getItem("my_app_name_here-quote-scroll") != null) {
-        $(window).scrollTop(localStorage.getItem("my_app_name_here-quote-scroll"));
+      if (localStorage.getItem("app-scroll") != null) {
+        //$(window).scrollTop(localStorage.getItem("app-scroll"));
+        window.scrollTo(0, parseInt(localStorage.getItem("app-scroll")));
     }
 
     $(window).on("scroll", function() {
-        localStorage.setItem("my_app_name_here-quote-scroll", $(window).scrollTop());
+        localStorage.setItem("app-scroll", $(window).scrollTop());
     });
   });
 
