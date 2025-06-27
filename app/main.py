@@ -68,11 +68,11 @@ def results(filename):
 def config_():
     if request.method == 'POST':
         config_content = request.form.get('config_content')
-        with open('config.yaml', 'w') as f:
+        with open('/config/config.yaml', 'w') as f:
             f.write(config_content)
         config.init()
         return redirect(url_for('config_'))
-    with open('config.yaml', 'r') as f:
+    with open('/config/config.yaml', 'r') as f:
         config_content = f.read()
     return render_template('config.html', config_content=config_content)
 
